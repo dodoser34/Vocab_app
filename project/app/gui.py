@@ -1,147 +1,157 @@
-from PyQt6.QtWidgets import (QWidget, QPushButton, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QMessageBox, QHBoxLayout, QProgressBar)
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtWidgets import (
+    QWidget, QPushButton, QVBoxLayout, QLabel, QLineEdit, QTextEdit,
+    QProgressBar, QApplication, QStackedLayout, QScrollArea
+)
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont
 from app.logic import add_word, get_words, update_progress, get_statistics
+import sys
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Vocab Trainer ПК")
-        self.resize(500, 600)
-        self.setStyleSheet("font-family: Arial; font-size: 14px;")
+        self.setWindowTitle("Vocab Trainer")
+        self.resize(500, 650)
+        self.base_width = 220
+        self.base_height = 60
 
+        self.setStyleSheet("""
+            QWidget { background-color: #2e2e2e; color: #f0f0f0; }
+            QPushButton { background-color: #4caf50; color: white; border-radius: 10px; font-size: 16px; padding: 10px; }
+            QPushButton:hover { background-color: #45a049; }
+            QLabel { font-size: 18px; font-weight: bold; }
+        """)
+
+        self.stack = QStackedLayout()
+        self.setLayout(self.stack)
+
+        self.create_menu()
+        self.create_add_word_widget()
+        self.create_training_widget()
+        self.create_dictionary_widget()
+
+    # ------------------ Главное меню ------------------
+    def create_menu(self):
+        self.menu_widget = QWidget()
+        main_layout = QVBoxLayout()
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.menu_widget.setLayout(main_layout)
+
+        header = QLabel("Vocab Trainer")
+        header.setFont(QFont("Arial", 26, QFont.Weight.Bold))
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(header)
+        main_layout.addSpacing(20)
+
+        # Последние 10 слов сверху
+        self.last_words_layout = QVBoxLayout()
+        self.last_words_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+        main_layout.addLayout(self.last_words_layout)
+        self.update_last_words()
+        main_layout.addSpacing(20)
+
+        # Кнопки меню
+        self.buttons = []
+        buttons_info = [
+            ("➕ Добавить слово", self.show_add_word),
+            ("📝 Тренировка", lambda: self.start_training(100)),
+            ("⏱ Быстрая тренировка", lambda: self.start_training(15)),
+            ("⏲ На время", lambda: self.start_training(2, timer=True)),
+            ("⚠️ Повторить ошибки", lambda: self.start_training(10, errors_only=True)),
+            ("📊 Статистика", self.show_stats),
+            ("📖 Словарь", self.show_dictionary)
+        ]
+        for text, func in buttons_info:
+            btn = QPushButton(text)
+            btn.setFixedSize(self.base_width, self.base_height)
+            btn.clicked.connect(func)
+            main_layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignHCenter)
+            main_layout.addSpacing(10)
+            self.buttons.append(btn)
+
+        main_layout.addStretch(1)
+        self.stack.addWidget(self.menu_widget)
+
+    def update_last_words(self):
+        # очистка
+        while self.last_words_layout.count():
+            item = self.last_words_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        last_words = get_words(10)
+        if not last_words:
+            lbl = QLabel("Нет добавленных слов")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.last_words_layout.addWidget(lbl)
+        else:
+            for w in last_words:
+                lbl = QLabel(f"{w[1]} → {w[2]}")
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.last_words_layout.addWidget(lbl)
+
+    # ------------------ Добавление слова ------------------
+    def create_add_word_widget(self):
+        self.add_word_widget = QWidget()
         layout = QVBoxLayout()
-        self.setLayout(layout)
+        self.add_word_widget.setLayout(layout)
+        self.eng_input = QLineEdit(); self.eng_input.setPlaceholderText("Английское слово")
+        self.trans_input = QLineEdit(); self.trans_input.setPlaceholderText("Перевод")
+        self.example_input = QTextEdit(); self.example_input.setPlaceholderText("Пример (необязательно)")
+        self.save_btn = QPushButton("💾 Сохранить")
+        self.save_btn.clicked.connect(self.save_word)
+        self.back_btn1 = QPushButton("⬅ Назад")
+        self.back_btn1.clicked.connect(lambda: self.show_menu())
 
-        self.header = QLabel("Vocab Trainer")
-        self.header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.header.setStyleSheet("font-size: 24px; font-weight: bold; margin: 10px;")
-        layout.addWidget(self.header)
-
-        # Кнопки тренировок
-        self.btn_add_word = QPushButton("➕ Добавить слово")
-        self.btn_training = QPushButton("📝 Тренировка 10 слов")
-        self.btn_fast_5 = QPushButton("⏱ Быстрая тренировка 5 слов")
-        self.btn_fast_2min = QPushButton("⏲ 2 минуты")
-        self.btn_errors = QPushButton("⚠️ Повторить ошибки")
-        self.btn_stats = QPushButton("📊 Статистика")
-        for btn in [self.btn_add_word, self.btn_training, self.btn_fast_5, self.btn_fast_2min, self.btn_errors, self.btn_stats]:
-            btn.setMinimumHeight(40)
-            layout.addWidget(btn)
-
-        # Фильтры
-        self.filter_layout = QHBoxLayout()
-        self.type_filter = QLineEdit(); self.type_filter.setPlaceholderText("Тип слова")
-        self.tag_filter = QLineEdit(); self.tag_filter.setPlaceholderText("Тег")
-        self.filter_layout.addWidget(self.type_filter)
-        self.filter_layout.addWidget(self.tag_filter)
-        layout.addLayout(self.filter_layout)
-
-        # Подключаем кнопки
-        self.btn_add_word.clicked.connect(self.show_add_word)
-        self.btn_training.clicked.connect(lambda: self.start_training(10))
-        self.btn_fast_5.clicked.connect(lambda: self.start_training(5))
-        self.btn_fast_2min.clicked.connect(lambda: self.start_training(2, timer=True))
-        self.btn_errors.clicked.connect(lambda: self.start_training(10, errors_only=True))
-        self.btn_stats.clicked.connect(self.show_stats)
+        for w in [self.eng_input, self.trans_input, self.example_input, self.save_btn, self.back_btn1]:
+            layout.addWidget(w)
+        self.stack.addWidget(self.add_word_widget)
 
     def show_add_word(self):
-        self.add_word_window = AddWordWindow()
-        self.add_word_window.show()
-
-    def start_training(self, count, errors_only=False, timer=False):
-        self.training_window = TrainingWindow(count, errors_only, timer,
-                                              self.type_filter.text(), self.tag_filter.text())
-        self.training_window.show()
-
-    def show_stats(self):
-        stats = get_statistics()
-        msg = f"Всего слов: {stats['total_words']}\n" \
-              f"✅ Правильно: {stats['total_correct']}\n" \
-              f"❌ Неправильно: {stats['total_incorrect']}\n" \
-              f"Точность: {stats['accuracy']}%\n\nСтатистика по дням:\n"
-        for day in stats['daily']:
-            msg += f"{day[0]}: ✅{day[1]} ❌{day[2]}\n"
-        QMessageBox.information(self, "Статистика", msg)
-
-
-class AddWordWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Добавить слово")
-        self.resize(400, 450)
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-
-        self.english = QLineEdit(); self.english.setPlaceholderText("Английское слово")
-        self.translation = QLineEdit(); self.translation.setPlaceholderText("Перевод")
-        self.type_ = QLineEdit(); self.type_.setPlaceholderText("Тип слова")
-        self.example = QTextEdit(); self.example.setPlaceholderText("Пример предложения (необязательно)")
-        self.tags = QLineEdit(); self.tags.setPlaceholderText("Теги через запятую")
-        self.btn_save = QPushButton("💾 Сохранить")
-
-        layout.addWidget(self.english)
-        layout.addWidget(self.translation)
-        layout.addWidget(self.type_)
-        layout.addWidget(self.example)
-        layout.addWidget(self.tags)
-        layout.addWidget(self.btn_save)
-
-        self.btn_save.clicked.connect(self.save_word)
+        self.eng_input.clear()
+        self.trans_input.clear()
+        self.example_input.clear()
+        self.stack.setCurrentWidget(self.add_word_widget)
 
     def save_word(self):
-        add_word(self.english.text(), self.translation.text(),
-                 self.type_.text(), example=self.example.toPlainText(),
-                 tags=self.tags.text())
-        QMessageBox.information(self, "Успех", "Слово добавлено!")
-        self.close()
+        add_word(self.eng_input.text(), self.trans_input.text(), example=self.example_input.toPlainText())
+        self.eng_input.clear(); self.trans_input.clear(); self.example_input.clear()
+        self.update_last_words()
+        self.show_menu()
 
+    def show_menu(self):
+        self.update_last_words()
+        self.stack.setCurrentWidget(self.menu_widget)
 
-class TrainingWindow(QWidget):
-    def __init__(self, limit=10, errors_only=False, timer=False, type_filter=None, tag_filter=None):
-        super().__init__()
-        self.setWindowTitle("Тренировка")
-        self.resize(500, 450)
-        self.setStyleSheet("font-size: 16px;")
-
-        self.words = get_words(limit, tags=tag_filter, types=type_filter, errors_only=errors_only)
-        self.index = 0
-        self.timer_mode = timer
-
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
+    # ------------------ Тренировка ------------------
+    def create_training_widget(self):
+        self.train_widget = QWidget()
+        layout = QVBoxLayout()
+        self.train_widget.setLayout(layout)
         self.word_label = QLabel()
         self.word_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.word_label.setStyleSheet("font-size: 20px; margin: 20px;")
-        self.answer_input = QLineEdit()
-        self.answer_input.setPlaceholderText("Введите перевод")
-        self.btn_submit = QPushButton("✅ Ответить")
+        self.answer_input = QLineEdit(); self.answer_input.setPlaceholderText("Введите перевод")
+        self.submit_btn = QPushButton("✅ Ответить"); self.submit_btn.clicked.connect(self.check_answer)
         self.progress = QProgressBar()
-        self.progress.setMaximum(100)
+        self.back_btn2 = QPushButton("⬅ Назад"); self.back_btn2.clicked.connect(self.show_menu)
 
-        self.layout.addWidget(self.word_label)
-        self.layout.addWidget(self.answer_input)
-        self.layout.addWidget(self.btn_submit)
-        self.layout.addWidget(self.progress)
+        for w in [self.word_label, self.answer_input, self.submit_btn, self.progress, self.back_btn2]:
+            layout.addWidget(w)
+        self.stack.addWidget(self.train_widget)
 
-        self.btn_submit.clicked.connect(self.check_answer)
-
-        # Таймер для 2 минуты
+    def start_training(self, count, errors_only=False, timer=False):
+        self.words = get_words(count, errors_only=errors_only)
+        self.index = 0
+        self.timer_mode = timer
+        self.time_left = 120
+        if not self.words:
+            self.word_label.setText("Нет слов для тренировки")
+        else:
+            self.show_word()
+        self.stack.setCurrentWidget(self.train_widget)
         if self.timer_mode:
-            self.time_left = 120
             self.qtimer = QTimer()
             self.qtimer.timeout.connect(self.update_timer)
             self.qtimer.start(1000)
-
-        self.show_word()
-
-    def update_timer(self):
-        self.time_left -= 1
-        self.progress.setValue(int(100*(120-self.time_left)/120))
-        if self.time_left <= 0:
-            self.qtimer.stop()
-            QMessageBox.information(self, "Время вышло", "Сессия 2 минуты завершена!")
-            self.close()
 
     def show_word(self):
         if self.index < len(self.words):
@@ -150,17 +160,69 @@ class TrainingWindow(QWidget):
             self.answer_input.clear()
             self.progress.setValue(int(100*self.index/len(self.words)))
         else:
-            QMessageBox.information(self, "Готово", "Тренировка завершена!")
-            self.close()
+            self.show_menu()
 
     def check_answer(self):
         answer = self.answer_input.text().strip()
-        correct_translation = self.current_word[2]
-        if answer.lower() == correct_translation.lower():
+        if answer.lower() == self.current_word[2].lower():
             update_progress(self.current_word[0], correct=True)
-            QMessageBox.information(self, "✅", "Правильно!")
         else:
             update_progress(self.current_word[0], correct=False)
-            QMessageBox.information(self, "❌", f"Неправильно. Правильный ответ: {correct_translation}")
         self.index += 1
         self.show_word()
+
+    def update_timer(self):
+        self.time_left -= 1
+        self.progress.setValue(int(100*(120-self.time_left)/120))
+        if self.time_left <= 0:
+            self.qtimer.stop()
+            self.show_menu()
+
+    # ------------------ Статистика ------------------
+    def show_stats(self):
+        stats = get_statistics()
+        msg = f"Всего слов: {stats['total_words']}\n" \
+              f"✅ Правильно: {stats['total_correct']}\n" \
+              f"❌ Неправильно: {stats['total_incorrect']}\n" \
+              f"Точность: {stats['accuracy']}%\n\nСтатистика по дням:\n"
+        for day in stats['daily']:
+            msg += f"{day[0]}: ✅{day[1]} ❌{day[2]}\n"
+        self.word_label.setText(msg)
+        self.stack.setCurrentWidget(self.train_widget)
+
+    # ------------------ Полный словарь ------------------
+    def create_dictionary_widget(self):
+        self.dict_widget = QWidget()
+        layout = QVBoxLayout(); self.dict_widget.setLayout(layout)
+        self.dict_scroll = QScrollArea(); self.dict_scroll.setWidgetResizable(True)
+        container = QWidget(); self.dict_scroll_layout = QVBoxLayout(); container.setLayout(self.dict_scroll_layout)
+        self.dict_scroll.setWidget(container)
+        self.back_btn_dict = QPushButton("⬅ Назад"); self.back_btn_dict.clicked.connect(self.show_menu)
+        layout.addWidget(self.dict_scroll)
+        layout.addWidget(self.back_btn_dict)
+        self.stack.addWidget(self.dict_widget)
+
+    def show_dictionary(self):
+        while self.dict_scroll_layout.count():
+            item = self.dict_scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        all_words = get_words(1000)
+        for w in all_words:
+            lbl = QLabel(f"{w[1]} → {w[2]}")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.dict_scroll_layout.addWidget(lbl)
+        self.stack.setCurrentWidget(self.dict_widget)
+
+    # ------------------ Адаптивные кнопки ------------------
+    def resizeEvent(self, event):
+        scale = min(self.width() / 500, 1.3)
+        for btn in self.buttons:
+            btn.setFixedSize(int(self.base_width * scale), int(self.base_height * scale))
+        super().resizeEvent(event)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
