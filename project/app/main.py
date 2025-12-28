@@ -1,8 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from app.db import init_db
-from app.gui import MainWindow
-
+from project.app.db import init_db
+from project.app.gui.main_window import MainWindow
 
 if __name__ == "__main__":
     init_db()

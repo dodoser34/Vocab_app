@@ -6,6 +6,15 @@ pycache__/__
 # C extensions
 *.so
 
+
+# Игнорировать только файл vocab.db
+project/data/vocab.db
+
+
+
+
+
+
 # Distribution / packaging
 .Python
 build/

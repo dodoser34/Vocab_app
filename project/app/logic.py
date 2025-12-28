@@ -1,5 +1,6 @@
 from datetime import datetime
-from app.db import get_conn
+from .db import get_conn
+
 
 # ------------------ Добавление слова ------------------
 def add_word(english, translation, type_=None, past_simple=None, past_participle=None, example=None, tags=None):
@@ -125,17 +126,14 @@ def get_statistics(min_attempts=0):
     conn = get_conn()
     cursor = conn.cursor()
 
-    # Общее количество слов
     cursor.execute("SELECT COUNT(*) FROM words")
     total_words = cursor.fetchone()[0]
 
-    # Прогресс
     cursor.execute("SELECT SUM(correct_count), SUM(incorrect_count) FROM progress")
     progress = cursor.fetchone()
     total_correct = progress[0] or 0
     total_incorrect = progress[1] or 0
 
-    # Статистика по дням
     cursor.execute("""
         SELECT DATE(last_reviewed), SUM(correct_count), SUM(incorrect_count)
         FROM progress
