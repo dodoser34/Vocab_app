@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QLineEdit, QPushButton, QProgressBar, QVBoxLayout
 from PyQt6.QtCore import Qt, QTimer
 from ...logic.training_logic import get_training_words, update_progress, check_answer
-from project.app.logic.translations import t
+from project.app.logic.translations.translations import t
 from project.app.logic.settings_logic import get_settings
 
 class TrainingScreen(QWidget):

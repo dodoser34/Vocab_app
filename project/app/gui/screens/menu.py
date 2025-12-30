@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QFrame, QGraphicsOpacityEffect
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QParallelAnimationGroup
 from ...logic.menu_logic import get_latest_words
-from project.app.logic.translations import t
+from project.app.logic.translations.translations import t
 from project.app.logic.settings_logic import get_settings
 
 class MenuScreen(QWidget):

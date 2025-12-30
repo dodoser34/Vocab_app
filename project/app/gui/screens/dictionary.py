@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea, QPushButton, QFrame
 from PyQt6.QtCore import Qt
 from ...logic.dictionary_logic import get_full_dictionary
-from project.app.logic.translations import t
+from project.app.logic.translations.translations import t
 from project.app.logic.settings_logic import get_settings
 
 class DictionaryScreen(QWidget):

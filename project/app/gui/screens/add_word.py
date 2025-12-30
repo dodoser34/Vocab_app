@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton
 from PyQt6.QtCore import Qt
 from ...logic.add_word_logic import add_word
-from project.app.logic.translations import t
+from project.app.logic.translations.translations import t
 from project.app.logic.settings_logic import get_settings
 
 class AddWordScreen(QWidget):

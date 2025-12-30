@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QFrame
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from ...logic.settings_logic import get_settings, set_language, set_theme
-from project.app.logic.translations import t
+from project.app.logic.translations.translations import t
 
 
 LANGUAGES = [("English", "en"), ("Русский", "ru"), ("Deutsch", "de")]
