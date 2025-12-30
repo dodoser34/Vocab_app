@@ -1,30 +1,30 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout , QHBoxLayout, QFrame, QGraphicsOpacityEffect
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QFrame, QGraphicsOpacityEffect
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QParallelAnimationGroup
-from ...logic import get_words
-
+from ...logic.menu_logic import get_latest_words
+from project.app.logic.translations import t
+from project.app.logic.settings_logic import get_settings
 
 class MenuScreen(QWidget):
     def __init__(self, main):
         super().__init__()
         self.main = main
         self.setStyleSheet("background:#232323; color:white;")
-
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
 
-        # ---------- TITLE ----------
-        title = QLabel("Vocab App")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("""
+        # TITLE
+        self.title = QLabel()
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title.setStyleSheet("""
             font-size: 28px;
             background: #2b2b2b;
             color: white;
             padding: 15px;
             border-radius: 25px;
         """)
-        root.addWidget(title)
+        root.addWidget(self.title)
 
-        # ---------- CARD ----------
+        # CARD
         card = QWidget()
         card.setStyleSheet("background:#2b2b2b; border-radius:30px;")
         card_layout = QHBoxLayout(card)
@@ -32,91 +32,98 @@ class MenuScreen(QWidget):
         card_layout.setSpacing(0)
         root.addWidget(card)
 
-        # ---------- LEFT (WORDS) ----------
+        # LEFT (WORDS)
         left = QWidget()
         left.setStyleSheet("background:#1f1f1f; border-radius:25px;")
-        left.setFixedWidth(460)  # fixed width
+        left.setFixedWidth(460)
         self.left_layout = QVBoxLayout(left)
         self.left_layout.setContentsMargins(15, 15, 15, 15)
         self.left_layout.setSpacing(6)
         card_layout.addWidget(left)
 
-        # ---------- RIGHT (BUTTONS) ----------
+        # RIGHT (BUTTONS)
         right = QVBoxLayout()
         right.setSpacing(10)
         card_layout.addLayout(right, 1)
         right.addSpacing(25)
 
-        # ---------- BUTTON FACTORY ----------
-        def btn(text, color, action):
-            wrapper = QWidget()
-            wrapper.setFixedHeight(85)
-            wrapper.setMinimumWidth(250)  # minimum width
-            layout = QVBoxLayout(wrapper)
-            layout.setContentsMargins(0, 0, 0, 0)
+        self.btn_add_word_wrapper = self.create_button("Add Word", "#6f865f", main.show_add_word)
+        self.btn_training_wrapper = self.create_button("Training", "#7b2f2f", main.show_training)
+        self.btn_dictionary_wrapper = self.create_button("Dictionary", "#3b3a74", main.show_dictionary)
+        self.btn_settings_wrapper = self.create_button("Settings", "#b3b3b3", main.show_settings)
 
-            b = QPushButton(text, wrapper)
-            b.setFixedWidth(480)
-            b.setFixedHeight(85)
-            b.setStyleSheet(f"""
-                QPushButton {{
-                    background: {color};
-                    border-top-left-radius: 0px;
-                    border-bottom-left-radius: 0px;
-                    border-top-right-radius: 42px;
-                    border-bottom-right-radius: 42px;
-                    font-size: 25px;
-                    color: white;
-                }}
-            """)
-            b.clicked.connect(action)
-            b.move(0, 0)
-            b.show()
-
-            anim = QPropertyAnimation(b, b"pos")
-            anim.setDuration(220)
-            anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-
-            def enterEvent(e):
-                anim.stop()
-                anim.setStartValue(b.pos())
-                anim.setEndValue(QPoint(18, 0))  # smooth slide right
-                anim.start()
-                return QPushButton.enterEvent(b, e)
-
-            def leaveEvent(e):
-                anim.stop()
-                anim.setStartValue(b.pos())
-                anim.setEndValue(QPoint(0, 0))  # smooth return
-                anim.start()
-                return QPushButton.leaveEvent(b, e)
-
-            b.enterEvent = enterEvent
-            b.leaveEvent = leaveEvent
-
-            layout.addWidget(b)
-            return wrapper
-
-        # ---------- ADD BUTTONS ----------
-        right.addWidget(btn("Add Word", "#6f865f", main.show_add_word))
-        right.addWidget(btn("Training", "#7b2f2f", main.show_training))
-        right.addWidget(btn("Dictionary", "#3b3a74", main.show_dictionary))
-        right.addWidget(btn("Settings", "#b3b3b3", main.show_settings))
+        right.addWidget(self.btn_add_word_wrapper)
+        right.addWidget(self.btn_training_wrapper)
+        right.addWidget(self.btn_dictionary_wrapper)
+        right.addWidget(self.btn_settings_wrapper)
         right.addStretch()
 
-        self.update_words()
+        self.refresh_words()
+        self.refresh_ui()
 
-    # ======================================================================
-    def update_words(self):
+    # ------------------------------
+
+    def create_button(self, text, color, action):
+        wrapper = QWidget()
+        wrapper.setFixedHeight(85)
+        layout = QVBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        b = QPushButton(text)
+        b.setFixedSize(480, 85)
+        b.setStyleSheet(f"""
+            QPushButton {{
+                background: {color};
+                border-top-left-radius: 0px;
+                border-bottom-left-radius: 0px;
+                border-top-right-radius: 42px;
+                border-bottom-right-radius: 42px;
+                font-size: 25px;
+                color: white;
+            }}
+        """)
+        b.clicked.connect(action)
+        layout.addWidget(b)
+
+        # hover анимация
+        anim = QPropertyAnimation(b, b"pos")
+        anim.setDuration(220)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        def enterEvent(e):
+            anim.stop()
+            anim.setStartValue(b.pos())
+            anim.setEndValue(QPoint(18, 0))
+            anim.start()
+            return QPushButton.enterEvent(b, e)
+
+        def leaveEvent(e):
+            anim.stop()
+            anim.setStartValue(b.pos())
+            anim.setEndValue(QPoint(0, 0))
+            anim.start()
+            return QPushButton.leaveEvent(b, e)
+
+        b.enterEvent = enterEvent
+        b.leaveEvent = leaveEvent
+
+
+        wrapper.button = b
+
+        return wrapper
+
+    # ------------------------------
+
+    def refresh_words(self):
         while self.left_layout.count():
             item = self.left_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        words = get_words(10)
+        words = get_latest_words(10)
 
         if not words:
-            placeholder = QLabel("Latest words will appear here")
+            placeholder = QLabel(t(get_settings()["language"], "menu", "title"))
             placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
             placeholder.setStyleSheet("color:#aaaaaa; font-size:18px;")
             self.left_layout.addWidget(placeholder)
@@ -158,7 +165,7 @@ class MenuScreen(QWidget):
 
             self.left_layout.addWidget(card)
 
-            # ---------- APPEAR ANIMATION ----------
+            # APPEAR ANIMATION
             opacity = QGraphicsOpacityEffect(row)
             row.setGraphicsEffect(opacity)
             opacity.setOpacity(0)
@@ -180,3 +187,13 @@ class MenuScreen(QWidget):
             group.addAnimation(fade)
             group.addAnimation(slide)
             group.start()
+
+    # ------------------------------
+
+    def refresh_ui(self):
+        lang = get_settings()["language"]
+        self.title.setText(t(lang, "menu", "title"))
+        self.btn_add_word_wrapper.button.setText(t(lang, "menu", "add_word"))
+        self.btn_training_wrapper.button.setText(t(lang, "menu", "training"))
+        self.btn_dictionary_wrapper.button.setText(t(lang, "menu", "dictionary"))
+        self.btn_settings_wrapper.button.setText(t(lang, "menu", "settings"))

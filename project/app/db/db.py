@@ -3,10 +3,8 @@ import os
 
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'vocab.db')
 
-
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    return conn
+    return sqlite3.connect(DB_PATH)
 
 def init_db():
     conn = get_conn()
