@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget, QLabel, QPushButton, QVBoxLayout , QHBoxLayout, QFrame, QGraphicsOpacityEffect
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QParallelAnimationGroup
 from ...logic import get_words
 
 
@@ -7,11 +7,12 @@ class MenuScreen(QWidget):
     def __init__(self, main):
         super().__init__()
         self.main = main
-
         self.setStyleSheet("background:#232323; color:white;")
+
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
 
+        # ---------- TITLE ----------
         title = QLabel("Vocab App")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
@@ -23,6 +24,7 @@ class MenuScreen(QWidget):
         """)
         root.addWidget(title)
 
+        # ---------- CARD ----------
         card = QWidget()
         card.setStyleSheet("background:#2b2b2b; border-radius:30px;")
         card_layout = QHBoxLayout(card)
@@ -30,43 +32,81 @@ class MenuScreen(QWidget):
         card_layout.setSpacing(0)
         root.addWidget(card)
 
+        # ---------- LEFT (WORDS) ----------
         left = QWidget()
         left.setStyleSheet("background:#1f1f1f; border-radius:25px;")
+        left.setFixedWidth(460)  # fixed width
         self.left_layout = QVBoxLayout(left)
         self.left_layout.setContentsMargins(15, 15, 15, 15)
-        card_layout.addWidget(left, 1)
+        self.left_layout.setSpacing(6)
+        card_layout.addWidget(left)
 
+        # ---------- RIGHT (BUTTONS) ----------
         right = QVBoxLayout()
         right.setSpacing(10)
         card_layout.addLayout(right, 1)
+        right.addSpacing(25)
 
-        top_space_for_buttons = 25  
-        right.addSpacing(top_space_for_buttons)
-
+        # ---------- BUTTON FACTORY ----------
         def btn(text, color, action):
-            b = QPushButton(text)
+            wrapper = QWidget()
+            wrapper.setFixedHeight(85)
+            wrapper.setMinimumWidth(250)  # minimum width
+            layout = QVBoxLayout(wrapper)
+            layout.setContentsMargins(0, 0, 0, 0)
+
+            b = QPushButton(text, wrapper)
+            b.setFixedWidth(480)
             b.setFixedHeight(85)
             b.setStyleSheet(f"""
-                background: {color};
-                border-top-left-radius: 0px;
-                border-bottom-left-radius: 0px;
-                border-top-right-radius: 42px;
-                border-bottom-right-radius: 42px;
-                font-size: 25px;
-                color: white;
+                QPushButton {{
+                    background: {color};
+                    border-top-left-radius: 0px;
+                    border-bottom-left-radius: 0px;
+                    border-top-right-radius: 42px;
+                    border-bottom-right-radius: 42px;
+                    font-size: 25px;
+                    color: white;
+                }}
             """)
             b.clicked.connect(action)
-            return b
+            b.move(0, 0)
+            b.show()
 
-        right.addWidget(btn("добавить слова", "#6f865f", main.show_add_word))
-        right.addWidget(btn("начать тренировку", "#7b2f2f", main.show_training))
-        right.addWidget(btn("словарь", "#3b3a74", main.show_dictionary))
-        right.addWidget(btn("настройки", "#b3b3b3", main.show_settings))
+            anim = QPropertyAnimation(b, b"pos")
+            anim.setDuration(220)
+            anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+            def enterEvent(e):
+                anim.stop()
+                anim.setStartValue(b.pos())
+                anim.setEndValue(QPoint(18, 0))  # smooth slide right
+                anim.start()
+                return QPushButton.enterEvent(b, e)
+
+            def leaveEvent(e):
+                anim.stop()
+                anim.setStartValue(b.pos())
+                anim.setEndValue(QPoint(0, 0))  # smooth return
+                anim.start()
+                return QPushButton.leaveEvent(b, e)
+
+            b.enterEvent = enterEvent
+            b.leaveEvent = leaveEvent
+
+            layout.addWidget(b)
+            return wrapper
+
+        # ---------- ADD BUTTONS ----------
+        right.addWidget(btn("Add Word", "#6f865f", main.show_add_word))
+        right.addWidget(btn("Training", "#7b2f2f", main.show_training))
+        right.addWidget(btn("Dictionary", "#3b3a74", main.show_dictionary))
+        right.addWidget(btn("Settings", "#b3b3b3", main.show_settings))
         right.addStretch()
 
+        self.update_words()
 
-        self.update_words()  
-
+    # ======================================================================
     def update_words(self):
         while self.left_layout.count():
             item = self.left_layout.takeAt(0)
@@ -74,53 +114,69 @@ class MenuScreen(QWidget):
                 item.widget().deleteLater()
 
         words = get_words(10)
+
         if not words:
-            placeholder = QLabel(
-                "Здесь будут\nпоследние\nдобавленные\nслова"
-            )
+            placeholder = QLabel("Latest words will appear here")
             placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            placeholder.setStyleSheet("color: #aaaaaa; font-size: 18px;")
+            placeholder.setStyleSheet("color:#aaaaaa; font-size:18px;")
             self.left_layout.addWidget(placeholder)
-        else:
-            for w in reversed(words):
-                card = QWidget()
-                card_layout = QVBoxLayout(card)
-                card_layout.setContentsMargins(0, 0, 0, 0)
-                card_layout.setSpacing(0)
+            return
 
-                row = QWidget()
-                row_layout = QHBoxLayout(row)
-                row_layout.setContentsMargins(10, 10, 10, 10)
-                row_layout.setSpacing(10)
-                row.setStyleSheet("background: #1a1a1a; border-radius: 15px;")
-                lbl_word = QLabel(f"{w[1]}")
-                lbl_word.setStyleSheet("font-size: 20px; font-weight: bold; color: #ffffff;")
-                lbl_word.setAlignment(Qt.AlignmentFlag.AlignTop)
+        for w in reversed(words):
+            card = QWidget()
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(0, 0, 0, 0)
+            card_layout.setSpacing(0)
 
-                arrow = QLabel("→")
-                arrow.setStyleSheet("font-size: 18px; color: #cccccc;")
-                arrow.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(10, 10, 10, 10)
+            row_layout.setSpacing(10)
+            row.setStyleSheet("background:#1a1a1a; border-radius:15px;")
 
-                lbl_translation = QLabel(f"{w[2]}")
-                lbl_translation.setStyleSheet("font-size: 18px; color: #cccccc;")
-                lbl_translation.setAlignment(Qt.AlignmentFlag.AlignTop)
+            lbl_word = QLabel(w[1])
+            lbl_word.setStyleSheet("font-size:20px; font-weight:bold;")
+            arrow = QLabel("→")
+            arrow.setStyleSheet("font-size:18px; color:#cccccc;")
+            lbl_translation = QLabel(w[2])
+            lbl_translation.setStyleSheet("font-size:18px; color:#cccccc;")
 
-                for i in reversed(range(row_layout.count())):
-                    row_layout.itemAt(i).widget().setParent(None)
+            row_layout.addStretch()
+            row_layout.addWidget(lbl_word)
+            row_layout.addSpacing(20)
+            row_layout.addWidget(arrow)
+            row_layout.addSpacing(20)
+            row_layout.addWidget(lbl_translation)
+            row_layout.addStretch()
 
-                row_layout.addStretch(1)
-                row_layout.addWidget(lbl_word)
-                row_layout.addSpacing(20)
-                row_layout.addWidget(arrow)
-                row_layout.addSpacing(20)
-                row_layout.addWidget(lbl_translation)
-                row_layout.addStretch(1)
+            card_layout.addWidget(row)
 
-                card_layout.addWidget(row)
+            line = QFrame()
+            line.setFrameShape(QFrame.Shape.HLine)
+            line.setStyleSheet("color:#333333; margin:2px 0;")
+            card_layout.addWidget(line)
 
-                line = QFrame()
-                line.setFrameShape(QFrame.Shape.HLine)
-                line.setStyleSheet("color: #333333; margin-top:2px; margin-bottom:2px;")
-                card_layout.addWidget(line)
+            self.left_layout.addWidget(card)
 
-                self.left_layout.addWidget(card)
+            # ---------- APPEAR ANIMATION ----------
+            opacity = QGraphicsOpacityEffect(row)
+            row.setGraphicsEffect(opacity)
+            opacity.setOpacity(0)
+
+            fade = QPropertyAnimation(opacity, b"opacity", row)
+            fade.setDuration(300)
+            fade.setStartValue(0)
+            fade.setEndValue(1)
+            fade.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+            row.move(row.x(), row.y() + 12)
+            slide = QPropertyAnimation(row, b"pos", row)
+            slide.setDuration(300)
+            slide.setStartValue(row.pos())
+            slide.setEndValue(row.pos() - QPoint(0, 12))
+            slide.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+            group = QParallelAnimationGroup(row)
+            group.addAnimation(fade)
+            group.addAnimation(slide)
+            group.start()

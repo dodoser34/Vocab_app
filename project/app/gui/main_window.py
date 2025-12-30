@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QStackedLayout
+from PyQt6.QtCore import Qt
 from .screens.menu import MenuScreen
 from .screens.add_word import AddWordScreen
 from .screens.training import TrainingScreen
@@ -10,7 +11,8 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Vocab App")
-        self.resize(1000, 800)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.MSWindowsFixedSizeDialogHint)
+        self.setFixedSize(1000, 800)
 
         self.stack = QStackedLayout(self)
 
@@ -19,8 +21,6 @@ class MainWindow(QWidget):
         self.training = TrainingScreen(self)
         self.dictionary = DictionaryScreen(self)
         self.settings = SettingsScreen(self)
-
-
 
         for w in (
             self.menu,
@@ -33,7 +33,6 @@ class MainWindow(QWidget):
 
         self.show_menu()
 
-    # навигация
     def show_menu(self):
         self.menu.update_words()
         self.stack.setCurrentWidget(self.menu)

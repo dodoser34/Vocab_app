@@ -1,16 +1,15 @@
 from datetime import datetime
 from .db import get_conn
 
-
-# ------------------ Добавление слова ------------------
+# ------------------ Add Word ------------------
 def add_word(english, translation, type_=None, past_simple=None, past_participle=None, example=None, tags=None):
     """
-    Добавляет слово в базу.
+    Adds a word to the database.
     """
     english = english.strip()
     translation = translation.strip()
     if not english or not translation:
-        return  # не добавляем пустые слова
+        return
 
     conn = get_conn()
     cursor = conn.cursor()
@@ -21,14 +20,14 @@ def add_word(english, translation, type_=None, past_simple=None, past_participle
     conn.commit()
     conn.close()
 
-# ------------------ Обновление прогресса ------------------
+# ------------------ Update Progress ------------------
 def update_progress(word_id, correct=True):
-    """Обновляет прогресс слова и дату последнего ответа"""
+    """Updates progress and last reviewed date for a word."""
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute("SELECT correct_count, incorrect_count FROM progress WHERE word_id=?", (word_id,))
     record = cursor.fetchone()
-    now = datetime.now()
+    now = datetime.now().isoformat()  # store as ISO string for SQLite
 
     if record:
         correct_count = record[0] + (1 if correct else 0)
@@ -47,11 +46,11 @@ def update_progress(word_id, correct=True):
     conn.commit()
     conn.close()
 
-# ------------------ Получение слов для тренировки ------------------
+# ------------------ Get Words for Training ------------------
 def get_words(limit=100, errors_only=False):
     """
-    Возвращает список слов для тренировки.
-    Сортировка: новые слова + слова с ошибками чаще.
+    Returns words for training.
+    Sorted: new words + frequently wrong words.
     """
     conn = get_conn()
     cursor = conn.cursor()
@@ -77,51 +76,63 @@ def get_words(limit=100, errors_only=False):
     words = cursor.fetchall()
     conn.close()
 
-    # Приоритет слов: новые + слова с ошибками
-    def word_priority(x):
+    # Prioritize words: new + frequently wrong
+    def priority(x):
         correct, incorrect = x[3], x[4]
         total = correct + incorrect
         if total == 0:
-            return 1.0
+            return 1.0  # new word
         return incorrect / total + 0.01
 
-    words.sort(key=word_priority, reverse=True)
+    words.sort(key=priority, reverse=True)
     return words
 
-# ------------------ Последние добавленные слова ------------------
+# ------------------ Last Added Words ------------------
 def get_last_words(limit=10):
-    """Возвращает последние добавленные слова"""
+    """Returns only the last added words (newest first), ignoring training progress."""
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT id, english, translation
+        SELECT id, english, translation, created_at
         FROM words
-        ORDER BY id DESC
+        ORDER BY datetime(created_at) DESC
         LIMIT ?
     """, (limit,))
     words = cursor.fetchall()
     conn.close()
     return words
 
-# ------------------ Полный словарь ------------------
-def get_full_dictionary():
-    """Возвращает все слова с переводами"""
+# ------------------ Full Dictionary ------------------
+def get_full_dictionary(order_by_time=False):
+    """
+    Returns only added words with translations.
+    By default, sorted alphabetically.
+    If order_by_time=True, sorted by creation time (newest first).
+    Training progress is ignored.
+    """
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, english, translation
-        FROM words
-        ORDER BY english ASC
-    """)
+    if order_by_time:
+        cursor.execute("""
+            SELECT id, english, translation, created_at
+            FROM words
+            ORDER BY datetime(created_at) DESC
+        """)
+    else:
+        cursor.execute("""
+            SELECT id, english, translation
+            FROM words
+            ORDER BY english ASC
+        """)
     words = cursor.fetchall()
     conn.close()
     return words
 
-# ------------------ Статистика ------------------
+
+# ------------------ Get Statistics ------------------
 def get_statistics(min_attempts=0):
     """
-    Возвращает общую статистику и по дням.
-    min_attempts - игнорировать слова с меньше чем min_attempts попыток
+    Returns overall and daily statistics.
     """
     conn = get_conn()
     cursor = conn.cursor()

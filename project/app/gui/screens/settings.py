@@ -15,7 +15,6 @@ class SettingsScreen(QWidget):
         layout.addWidget(title)
 
         layout.addWidget(QLabel("• тема интерфейса"))
-        layout.addWidget(QLabel("• количество слов в тренировке"))
         layout.addWidget(QLabel("• язык интерфейса"))
 
         back = QPushButton("назад")
