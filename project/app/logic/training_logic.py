@@ -1,46 +1,49 @@
 from ..db.db import get_conn
 from datetime import datetime
+import random
 
-def get_training_words(limit=100, errors_only=False):
-
+def get_training_words(limit=25, errors_only=False):
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     if errors_only:
         cursor.execute("""
-            SELECT w.id, w.english, w.translation, COALESCE(p.correct_count,0), COALESCE(p.incorrect_count,0)
+            SELECT w.id, w.english, w.translation,
+            COALESCE(p.correct_count,0), COALESCE(p.incorrect_count,0)
             FROM words w
             JOIN progress p ON w.id = p.word_id
             WHERE p.incorrect_count > 0
-            ORDER BY p.incorrect_count DESC
-            LIMIT ?
-        """, (limit,))
+        """)
     else:
         cursor.execute("""
-            SELECT w.id, w.english, w.translation, COALESCE(p.correct_count,0), COALESCE(p.incorrect_count,0)
+            SELECT w.id, w.english, w.translation,
+            COALESCE(p.correct_count,0), COALESCE(p.incorrect_count,0)
             FROM words w
             LEFT JOIN progress p ON w.id = p.word_id
-            ORDER BY w.id DESC
-            LIMIT ?
-        """, (limit,))
+        """)
 
     words = cursor.fetchall()
     conn.close()
-
 
     def priority(x):
         correct, incorrect = x[3], x[4]
         total = correct + incorrect
         if total == 0:
             return 1.0
-        return incorrect / total + 0.01
+        return (incorrect + 1) / (total + 1) + 0.01
 
-    words.sort(key=priority, reverse=True)
-    return words
+    weighted_words = [(w, priority(w)) for w in words]
 
+    selected = []
+    while len(selected) < min(limit, len(weighted_words)):
+        w, _ = random.choices(weighted_words, weights=[pr for _, pr in weighted_words])[0]
+        if w not in selected:
+            selected.append(w)
+
+    selected.sort(key=lambda x: priority(x), reverse=True)
+    return selected
 
 def update_progress(word_id, correct=True):
-
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute("SELECT correct_count, incorrect_count FROM progress WHERE word_id=?", (word_id,))
@@ -64,9 +67,7 @@ def update_progress(word_id, correct=True):
     conn.commit()
     conn.close()
 
-
 def check_answer(word_id, user_input, correct_translation):
-
     ok = user_input.strip().lower() == correct_translation.strip().lower()
     update_progress(word_id, ok)
     return ok

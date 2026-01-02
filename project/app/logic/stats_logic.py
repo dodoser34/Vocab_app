@@ -1,33 +1,52 @@
 from ..db.db import get_conn
+from datetime import datetime, timedelta
 
-def get_statistics():
+def get_training_stats():
     conn = get_conn()
     cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM words")
-    total_words = cursor.fetchone()[0]
-
-    cursor.execute("SELECT SUM(correct_count), SUM(incorrect_count) FROM progress")
-    progress = cursor.fetchone()
-    total_correct = progress[0] or 0
-    total_incorrect = progress[1] or 0
-
-    cursor.execute("""
-        SELECT DATE(last_reviewed), SUM(correct_count), SUM(incorrect_count)
-        FROM progress
-        WHERE last_reviewed IS NOT NULL
-        GROUP BY DATE(last_reviewed)
-        ORDER BY DATE(last_reviewed)
-    """)
-    daily = cursor.fetchall()
+    cursor.execute("SELECT correct_count, incorrect_count FROM progress")
+    data = cursor.fetchall()
     conn.close()
 
-    accuracy = round(total_correct / (total_correct + total_incorrect) * 100, 2) if (total_correct + total_incorrect) > 0 else 0
+    correct = sum(r[0] for r in data)
+    incorrect = sum(r[1] for r in data)
+    total = correct + incorrect
+    avg_percent = int(correct / total * 100) if total > 0 else 0
+
+    return {"correct": correct, "incorrect": incorrect, "average_percent": avg_percent}
+
+
+def get_streaks():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT DATE(last_reviewed) FROM progress ORDER BY last_reviewed")
+    date_rows = cursor.fetchall()
+    dates = [datetime.fromisoformat(r[0]).date() for r in date_rows if r[0] is not None]
+    conn.close()
+
+    if not dates:
+        return {"current_streak": 0, "total_days": 0, "streak_history": []}
+
+    dates = sorted(set(dates))
+    streak_history = []
+    current_streak = 1
+    max_streak = 1
+
+    for i in range(len(dates)):
+        if i == 0:
+            streak_history.append(1)
+            continue
+        if dates[i] - dates[i-1] == timedelta(days=1):
+            current_streak += 1
+        else:
+            current_streak = 1
+        streak_history.append(current_streak)
+        max_streak = max(max_streak, current_streak)
+
+    total_days = len(dates)
 
     return {
-        "total_words": total_words,
-        "total_correct": total_correct,
-        "total_incorrect": total_incorrect,
-        "accuracy": accuracy,
-        "daily": daily
+        "current_streak": current_streak,
+        "total_days": total_days,
+        "streak_history": streak_history
     }

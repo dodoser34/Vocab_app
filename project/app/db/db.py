@@ -9,6 +9,7 @@ def get_conn():
 def init_db():
     conn = get_conn()
     cursor = conn.cursor()
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS words (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +23,12 @@ def init_db():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    cursor.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_words_english
+        ON words(LOWER(english));
+    """)
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS progress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,5 +39,6 @@ def init_db():
             FOREIGN KEY (word_id) REFERENCES words(id)
         )
     """)
+
     conn.commit()
     conn.close()

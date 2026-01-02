@@ -5,6 +5,7 @@ from .screens.add_word import AddWordScreen
 from .screens.training import TrainingScreen
 from .screens.dictionary import DictionaryScreen
 from .screens.settings import SettingsScreen
+from .screens.stats import StatsScreen  # <- новый экран
 from project.app.logic.settings_logic import get_settings
 
 class MainWindow(QWidget):
@@ -18,14 +19,14 @@ class MainWindow(QWidget):
         self.stack.setContentsMargins(0, 0, 0, 0)
         self.stack.setSpacing(0)
 
-
         self.menu = MenuScreen(self)
         self.add_word = AddWordScreen(self)
         self.training = TrainingScreen(self)
         self.dictionary = DictionaryScreen(self)
         self.settings = SettingsScreen(self)
+        self.stats = StatsScreen(self)  # <- добавляем статистику
 
-        for w in (self.menu, self.add_word, self.training, self.dictionary, self.settings):
+        for w in (self.menu, self.add_word, self.training, self.dictionary, self.settings, self.stats):
             self.stack.addWidget(w)
 
         self.show_menu()
@@ -60,19 +61,25 @@ class MainWindow(QWidget):
         self.apply_theme()
         self.apply_language()
 
+    def show_stats(self):
+        self.stack.setCurrentWidget(self.stats)
+        self.stats.refresh()
+        self.apply_theme()
+        self.apply_language()
+
     # -----------------
 
     def apply_theme(self):
         theme = get_settings()["theme"]
         style = "background:#232323; color:white;" if theme == "dark" else "background:#f0f0f0; color:black;"
         self.setStyleSheet(style)
-        for screen in (self.menu, self.add_word, self.training, self.dictionary, self.settings):
+        for screen in (self.menu, self.add_word, self.training, self.dictionary, self.settings, self.stats):
             if hasattr(screen, "refresh_ui"):
                 screen.refresh_ui()
 
     # -----------------
 
     def apply_language(self):
-        for screen in (self.menu, self.add_word, self.training, self.dictionary, self.settings):
+        for screen in (self.menu, self.add_word, self.training, self.dictionary, self.settings, self.stats):
             if hasattr(screen, "refresh_ui"):
                 screen.refresh_ui()

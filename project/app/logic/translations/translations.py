@@ -8,6 +8,7 @@ TRANSLATIONS = {
             "training": "Training",
             "dictionary": "Dictionary",
             "settings": "Settings",
+            "stats": "Statistics",
         },
         "add_word": {
             "title": "Add Word",
@@ -36,6 +37,15 @@ TRANSLATIONS = {
             "theme": "Theme",
             "back": "Back",
         },
+        "stats": {
+            "title": "Statistics",
+            "average_accuracy": "Average accuracy",
+            "current_streak": "Current streak",
+            "total_days": "Total training days",
+            "correct": "Correct",
+            "incorrect": "Incorrect",
+            "back": "Back",
+        },
     },
     "ru": {
         "menu": {
@@ -44,6 +54,7 @@ TRANSLATIONS = {
             "training": "Тренировка",
             "dictionary": "Словарь",
             "settings": "Настройки",
+            "stats": "Статистика",
         },
         "add_word": {
             "title": "Добавить слово",
@@ -72,6 +83,15 @@ TRANSLATIONS = {
             "theme": "Тема",
             "back": "Назад",
         },
+        "stats": {
+            "title": "Статистика",
+            "average_accuracy": "Средняя точность",
+            "current_streak": "Текущий стрик",
+            "total_days": "Всего дней тренировок",
+            "correct": "Верно",
+            "incorrect": "Неверно",
+            "back": "Назад",
+        },
     },
     "de": {
         "menu": {
@@ -80,6 +100,7 @@ TRANSLATIONS = {
             "training": "Training",
             "dictionary": "Wörterbuch",
             "settings": "Einstellungen",
+            "stats": "Statistiken",
         },
         "add_word": {
             "title": "Wort hinzufügen",
@@ -106,6 +127,15 @@ TRANSLATIONS = {
             "title": "Einstellungen",
             "language": "Sprache",
             "theme": "Thema",
+            "back": "Zurück",
+        },
+        "stats": {
+            "title": "Statistiken",
+            "average_accuracy": "Durchschnittliche Genauigkeit",
+            "current_streak": "Aktuelle Serie",
+            "total_days": "Gesamte Trainingstage",
+            "correct": "Richtig",
+            "incorrect": "Falsch",
             "back": "Zurück",
         },
     },

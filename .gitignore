@@ -8,11 +8,7 @@ pycache__/__
 
 
 # Игнорировать только файл vocab.db
-project/data/vocab.db
-
-
-
-
+project\app\data\vocab.db
 
 
 # Distribution / packaging

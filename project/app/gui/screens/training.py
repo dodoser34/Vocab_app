@@ -20,6 +20,13 @@ class TrainingScreen(QWidget):
 
         # ANSWER INPUT
         self.answer = QLineEdit()
+        self.answer.setStyleSheet("""
+            background: #1f1f1f;
+            border-radius: 15px;
+            padding: 10px;
+            font-size: 18px;
+            color: white;
+        """)
         self.layout.addWidget(self.answer)
 
         # SUBMIT BUTTON

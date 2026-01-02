@@ -49,12 +49,14 @@ class MenuScreen(QWidget):
 
         self.btn_add_word_wrapper = self.create_button("Add Word", "#6f865f", main.show_add_word)
         self.btn_training_wrapper = self.create_button("Training", "#7b2f2f", main.show_training)
-        self.btn_dictionary_wrapper = self.create_button("Dictionary", "#3b3a74", main.show_dictionary)
+        self.btn_dictionary_wrapper = self.create_button("Dictionary", "#3d927d", main.show_dictionary)
+        self.btn_stats_wrapper = self.create_button("Statistics", "#5b2cc9", main.show_stats)
         self.btn_settings_wrapper = self.create_button("Settings", "#b3b3b3", main.show_settings)
 
         right.addWidget(self.btn_add_word_wrapper)
         right.addWidget(self.btn_training_wrapper)
         right.addWidget(self.btn_dictionary_wrapper)
+        right.addWidget(self.btn_stats_wrapper)
         right.addWidget(self.btn_settings_wrapper)
         right.addStretch()
 
@@ -188,8 +190,6 @@ class MenuScreen(QWidget):
             group.addAnimation(slide)
             group.start()
 
-    # ------------------------------
-
     def refresh_ui(self):
         lang = get_settings()["language"]
         self.title.setText(t(lang, "menu", "title"))
@@ -197,3 +197,4 @@ class MenuScreen(QWidget):
         self.btn_training_wrapper.button.setText(t(lang, "menu", "training"))
         self.btn_dictionary_wrapper.button.setText(t(lang, "menu", "dictionary"))
         self.btn_settings_wrapper.button.setText(t(lang, "menu", "settings"))
+        self.btn_stats_wrapper.button.setText(t(lang, "menu", "stats"))
